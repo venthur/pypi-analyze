@@ -45,6 +45,7 @@ g.figure.set_size_inches(12, 6)
 g.set(title=f'Relative distribution of build backends over time. (bin width: {BIN_WIDTH} days, n: 1.2M uploads)')
 g.set_axis_labels('Upload date', 'Uploads')
 g.tight_layout()
+g.figure.savefig('relative.png')
 
 g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
     col='backend', hue_order=order, col_order=order,
@@ -54,8 +55,8 @@ g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
 g.figure.set_size_inches(19, 6)
 g.figure.suptitle(f'Absolute distribution of build backends over time. (bin width: {BIN_WIDTH} days, n: 1.2M uploads)')
 g.set_axis_labels('Upload date', 'Uploads')
-
 g.tight_layout()
+g.figure.savefig('absolute.png')
 
 #sns.displot(results, x='uploaded_on', hue='backend', element='step',
 #    multiple='layer', fill=False, hue_order=order, 
