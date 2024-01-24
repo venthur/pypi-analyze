@@ -38,7 +38,7 @@ QUERY = """
     order by uploaded_on desc
 """
 
-RESULTS = 'results.csv'
+RESULTS = 'results.csv.gz'
 
 
 def get_results():
