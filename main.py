@@ -32,7 +32,6 @@ QUERY = """
         repository
     from 'data/*.parquet'
     where
-        skip_reason == '' and
         lower(string_split(path, '/')[-1]) == 'pyproject.toml' and
         len(string_split(path, '/')) == 5
     order by uploaded_on desc

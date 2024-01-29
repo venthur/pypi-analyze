@@ -14,13 +14,12 @@ results = results.drop(columns=['path', 'repository', 'hash'])
 
 #results = results.dropna()
 results.backend = results.backend.astype('string')
-results.backend = results.backend.map(lambda x: x.split(':')[0])
 results.backend = results.backend.map(lambda x: x.split('.')[0])
 results.backend = results.backend.map(lambda x: x.split('_')[0])
-results.backend = results.backend.map(lambda x: x.split('-')[0])
 
 counts = results['backend'].value_counts()
-print(len(results))
+n = len(results)
+print(n)
 print(counts)
 to_remove = counts[4:].index
 results['backend'] = results['backend'].replace(to_remove, 'other')
@@ -42,7 +41,7 @@ g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
     binwidth=BIN_WIDTH,
     multiple='fill', stat='percent', hue_order=order, facet_kws={'legend_out': False})
 g.figure.set_size_inches(12, 6)
-g.set(title=f'Relative distribution of build backends over time. (bin width: {BIN_WIDTH} days, n: 1.2M uploads)')
+g.set(title=f'Relative distribution of build backends over time. (bin width={BIN_WIDTH} days, {n=:.1e} uploads)')
 g.set_axis_labels('Upload date', 'Uploads')
 g.tight_layout()
 g.figure.savefig('relative.png')
@@ -53,7 +52,7 @@ g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
     binwidth=BIN_WIDTH,
 )
 g.figure.set_size_inches(19, 6)
-g.figure.suptitle(f'Absolute distribution of build backends over time. (bin width: {BIN_WIDTH} days, n: 1.2M uploads)')
+g.figure.suptitle(f'Absolute distribution of build backends over time. (bin width={BIN_WIDTH} days, {n=:.1e} uploads)')
 g.set_axis_labels('Upload date', 'Uploads')
 g.tight_layout()
 g.figure.savefig('absolute.png')
