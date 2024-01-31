@@ -16,10 +16,10 @@ get-dataset:
 	curl -L --remote-name-all --parallel --create-dirs --output-dir $(DATASET_DIR) $(shell curl -L "https://github.com/pypi-data/data/raw/main/links/dataset.txt")
 
 get-data: $(VENV)
-	$(BIN)/python3 main.py
+	$(BIN)/python3 main.py --fetch-data
 
 analysis: $(VENV)
-	$(BIN)/python3 analysis.py
+	$(BIN)/python3 main.py --analyze
 
 clean:
 	rm -rf $(VENV)

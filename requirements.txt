@@ -1,7 +1,7 @@
 duckdb==0.9.2
-ipython==8.20.0
+ipython==8.21.0
 matplotlib==3.8.2
 numpy==1.26.3
-pandas==2.1.4
-seaborn==0.13.1
-urllib3==2.1.0
+polars[pyarrow]==0.20.6
+seaborn==0.13.2
+urllib3==2.2.0

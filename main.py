@@ -6,7 +6,7 @@ import logging
 
 import urllib3
 import duckdb
-import pandas as pd
+import polars as pl
 import seaborn as sns
 from matplotlib import pyplot as plt
 
@@ -40,19 +40,22 @@ QUERY = """
     order by uploaded_on desc
 """
 
-RESULTS = 'results.csv.gz'
+RESULTS = 'results.parquet'
 
 
 def get_results():
     if os.path.isfile(RESULTS):
-        logger.info('Loading results from csv')
-        results = pd.read_csv(RESULTS, parse_dates=['uploaded_on'])
+        logger.info('Loading results from parquet file')
+        results = pl.read_parquet(RESULTS)
     else:
         logger.info('Querying data from parquet files')
         results = duckdb.query(QUERY)
-        results = results.df()
-        results.hash = results.hash.apply(bytearray.hex)
-        results.to_csv(RESULTS, index=False)
+        results = results.pl()
+        results = results.with_columns(
+            pl.col('hash').bin.encode(encoding='hex'),
+            pl.col('uploaded_on').dt.date()
+        )
+        results.write_parquet(RESULTS)
     return results
 
 
@@ -77,13 +80,12 @@ def fetch_data():
 
     # total number of rows
     rows = results.shape[0]
-    processed = results.hash.isin(backends)
-    skipped = processed.sum()
+    results = results.filter(~pl.col('hash').is_in(backends.keys()))
+    skipped = rows - len(results)
     logger.info(f"Skipping {skipped} rows")
-    results = results[~processed]
 
-    for i, row in enumerate(results.iterrows()):
-        path, hash_, uploaded_on, repository = row[1]
+    for i, row in enumerate(results.iter_rows()):
+        path, hash_, uploaded_on, repository = row
         url = f"https://raw.githubusercontent.com/pypi-data/pypi-mirror-{repository}/code/{path}"
 
         if i % 500 == 0:
@@ -118,31 +120,46 @@ def analyze():
     results = get_results()
     backends = get_backends()
 
-    backends = pd.DataFrame(backends.items(), columns=['hash', 'backend'])
+    backends = pl.DataFrame({
+        'hash': backends.keys(),
+        'backend': backends.values(),
+    })
 
-    results = pd.merge(results, backends, on='hash')
-    results = results.drop(columns=['path', 'repository', 'hash'])
+    results = results.join(backends, on='hash', how='inner')
+    results = results.drop(['path', 'repository', 'hash'])
 
-    #results = results.dropna()
-    results.backend = results.backend.astype('string')
-    results.backend = results.backend.map(lambda x: x.split('.')[0])
-    results.backend = results.backend.map(lambda x: x.split('_')[0])
+    results = results.with_columns(
+        pl.col('backend')
+        .str.split('.').list.first()
+        .str.split('_').list.first()
+    )
+
+    top = (
+        results.group_by('backend').len().sort('len', descending=True)
+        .select('backend').head(4).to_series()
+    )
+
+    results = results.with_columns(
+        pl.when(pl.col('backend').is_in(top))
+        .then(pl.col('backend'))
+        .otherwise(pl.lit('other'))
+    )
 
     counts = results['backend'].value_counts()
     n = len(results)
     print(n)
     print(counts)
-    to_remove = counts[4:].index
-    results['backend'] = results['backend'].replace(to_remove, 'other')
 
-    #results = results[~(results['uploaded_on'] > '2024')]
-    results = results[~(results['uploaded_on'] < '2018')]
+    results = results.filter(
+        pl.col('uploaded_on') >= pl.date(2018, 1, 1),
+    )
 
-    order = results.backend.value_counts().index
+    order = (
+        results.group_by('backend').len().sort('len', descending=True)
+        .select('backend').to_series()
+    )
 
-    #bins = pd.date_range(start=results['uploaded_on'].min(), end=results['uploaded_on'].max(), freq='M')
-    #results['uploaded_on'] = pd.cut(results['uploaded_on'], bins=bins, labels=bins[:-1])
-
+    print(results)
 
     sns.set_theme(palette='colorblind')
 
@@ -167,16 +184,6 @@ def analyze():
     g.set_axis_labels('Upload date', 'Uploads')
     g.tight_layout()
     g.figure.savefig('absolute.png')
-
-    #sns.displot(results, x='uploaded_on', hue='backend', element='step',
-    #    multiple='layer', fill=False, hue_order=order, 
-    #    binwidth=BIN_WIDTH,
-    #)
-
-    #sns.displot(results, x='uploaded_on', hue='backend', element='step',
-    #    multiple='stack', hue_order=order,
-    #    binwidth=BIN_WIDTH,
-    #)
 
     plt.show()
 
