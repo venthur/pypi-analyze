@@ -159,9 +159,30 @@ def analyze():
         .select('backend').to_series()
     )
 
+    grouped = (
+        results.sort('uploaded_on')
+        .group_by_dynamic('uploaded_on', by='backend', every='1mo')
+        .agg(pl.len().alias('count'))
+    )
+    print(grouped)
+
+    normalized = (
+        grouped.with_columns([
+        (
+            pl.col('count') / pl.col('count').sum()
+        ).over('uploaded_on')
+    ]))
+    print(normalized)
+
     print(results)
 
     sns.set_theme(palette='colorblind')
+
+    sns.relplot(
+        normalized, x='uploaded_on', y='count', hue='backend',
+        hue_order=order,
+        kind='line',
+    )
 
     BIN_WIDTH = 7 * 4
 
