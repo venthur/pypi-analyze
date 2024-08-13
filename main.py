@@ -37,7 +37,7 @@ QUERY = """
     where
         lower(string_split(path, '/')[-1]) == 'pyproject.toml' and
         len(string_split(path, '/')) == 5
-    order by uploaded_on desc
+    order by uploaded_on asc
 """
 
 RESULTS = 'results.parquet'
@@ -147,8 +147,8 @@ def analyze():
 
     counts = results['backend'].value_counts()
     n = len(results)
-    print(n)
-    print(counts)
+    #print(n)
+    #print(counts)
 
     results = results.filter(
         pl.col('uploaded_on') >= pl.date(2018, 1, 1),
@@ -164,7 +164,7 @@ def analyze():
         .group_by_dynamic('uploaded_on', by='backend', every='1mo')
         .agg(pl.len().alias('count'))
     )
-    print(grouped)
+    #print(grouped)
 
     normalized = (
         grouped.with_columns([
@@ -172,17 +172,24 @@ def analyze():
             pl.col('count') / pl.col('count').sum()
         ).over('uploaded_on')
     ]))
-    print(normalized)
+    #print(normalized)
 
-    print(results)
+    #print(results)
 
     sns.set_theme(palette='colorblind')
 
-    sns.relplot(
+    g = sns.relplot(
         normalized, x='uploaded_on', y='count', hue='backend',
         hue_order=order,
         kind='line',
+        facet_kws={'legend_out': False},
     )
+    g.figure.set_size_inches(12, 6)
+    g.set(title='Relative distribution of build backends over time.')
+    g.set(ylim=(0, 1))
+    g.set_axis_labels('Upload date', 'Uploads')
+    g.tight_layout()
+    g.figure.savefig('relative_single.png')
 
     BIN_WIDTH = 7 * 4
 
