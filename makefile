@@ -13,7 +13,8 @@ run: $(VENV)
 	$(BIN)/python3 main.py
 
 get-dataset:
-	curl -L --remote-name-all --parallel --create-dirs --output-dir $(DATASET_DIR) $(shell curl -L "https://github.com/pypi-data/data/raw/main/links/dataset.txt")
+	curl -L --remote-name-all --retry 3 --create-dirs --output-dir $(DATASET_DIR) $(shell curl -L "https://github.com/pypi-data/data/raw/main/links/dataset.txt")
+	rm results.parquet
 
 get-data: $(VENV)
 	$(BIN)/python3 main.py --fetch-data
