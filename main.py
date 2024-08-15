@@ -123,7 +123,7 @@ def analyze():
     backends = pl.DataFrame({
         'hash': backends.keys(),
         'backend': backends.values(),
-    })
+    }, strict=False)
 
     results = results.join(backends, on='hash', how='inner')
     results = results.drop(['path', 'repository', 'hash'])
@@ -132,6 +132,8 @@ def analyze():
         pl.col('backend')
         .str.split('.').list.first()
         .str.split('_').list.first()
+        .str.split('-').list.first()
+        .str.split(':').list.first()
     )
 
     top = (
@@ -161,7 +163,7 @@ def analyze():
 
     grouped = (
         results.sort('uploaded_on')
-        .group_by_dynamic('uploaded_on', by='backend', every='1mo')
+        .group_by_dynamic('uploaded_on', group_by='backend', every='1mo')
         .agg(pl.len().alias('count'))
     )
     #print(grouped)
