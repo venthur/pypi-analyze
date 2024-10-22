@@ -3,3 +3,4 @@ venv/
 
 data/
 results.parquet
+dataset.txt

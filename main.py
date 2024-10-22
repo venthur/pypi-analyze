@@ -232,12 +232,42 @@ def main(arguments=None):
         action='store_true',
         help='Analyze data',
     )
+
+    parser.add_argument(
+        '-t',
+        '--trim-dataset',
+        nargs=1,
+        help='Trim dataset',
+    )
+
     args = parser.parse_args(arguments)
 
     if args.fetch_data:
         fetch_data()
     if args.analyze:
         analyze()
+    if args.trim_dataset:
+        dataset = args.trim_dataset[0]
+        trim_dataset(dataset, 'data/')
+
+
+def trim_dataset(dsfile, dsdir):
+    dsfiles = set()
+    with open(dsfile) as fh:
+        for line in fh:
+            filename = line.strip().split('/')[-1]
+            dsfiles.add(filename)
+
+    dsdirfiles = set()
+    with os.scandir(dsdir) as it:
+        for entry in it:
+            if entry.is_file():
+                dsdirfiles.add(entry.name)
+
+    for file in dsdirfiles - dsfiles:
+        print(f"Deleting {file}")
+        # delete the file
+        os.remove(os.path.join(dsdir, file))
 
 
 if __name__ == '__main__':
