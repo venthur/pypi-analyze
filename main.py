@@ -3,6 +3,7 @@ import tomllib
 import pickle
 import os.path
 import logging
+import gzip
 
 import urllib3
 import duckdb
@@ -62,14 +63,16 @@ def get_results():
 def get_backends():
     logger.info('Loading saved backends')
     try:
-        backends = pickle.load(open('backends.pickle', 'rb'))
+        with gzip.open('backends.pickle.gz', 'rb') as fh:
+            backends = pickle.load(fh)
     except:
         backends = {}
     return backends
 
 
 def save_backends(backends):
-    pickle.dump(backends, open('backends.pickle', 'wb'))
+    with gzip.open('backends.pickle.gz', 'wb') as fh:
+        pickle.dump(backends, fh)
 
 
 def fetch_data():
@@ -193,7 +196,7 @@ def analyze():
     g.tight_layout()
     g.figure.savefig('relative_single.png')
 
-    BIN_WIDTH = 7 * 4
+    BIN_WIDTH = 7# * 4
 
     g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
         binwidth=BIN_WIDTH,
