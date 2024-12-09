@@ -79,20 +79,20 @@ def fetch_data():
     results = get_results()
     backends = get_backends()
 
+    unique_hashes = results.select(
+        pl.col('hash').n_unique(),
+    ).item(0, 0)
+
     backends = {k: v for k, v in backends.items() if v is not None}
 
-    # total number of rows
-    rows = results.shape[0]
     results = results.filter(~pl.col('hash').is_in(backends.keys()))
-    skipped = rows - len(results)
-    logger.info(f"Skipping {skipped} rows")
 
     for i, row in enumerate(results.iter_rows()):
         path, hash_, uploaded_on, repository = row
         url = f"https://raw.githubusercontent.com/pypi-data/pypi-mirror-{repository}/code/{path}"
 
         if i % 500 == 0:
-            logger.info(f"{i+skipped}/{rows} ({(i+skipped)/rows*100:.2f}%) [{uploaded_on}]")
+            logger.info(f"{len(backends)}/{unique_hashes} ({len(backends)/unique_hashes*100:.2f}%) [{uploaded_on}]")
             save_backends(backends)
 
         if hash_ in backends:
@@ -113,7 +113,7 @@ def fetch_data():
         except:
             # fallback to setuptools as per:
             # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#fallback-behaviour
-            backend = 'setuptools.build_meta:__legacy__'
+            backend = 'DEFAULT'
         backends[hash_] = backend
 
     save_backends(backends)
@@ -122,6 +122,11 @@ def fetch_data():
 def analyze():
     results = get_results()
     backends = get_backends()
+
+    unique_hashes = results.select(
+        pl.col('hash').n_unique(),
+    ).item(0, 0)
+    logger.info(f"{len(backends)}/{unique_hashes} ({len(backends)/unique_hashes*100:.2f}%)")
 
     backends = pl.DataFrame({
         'hash': backends.keys(),
@@ -141,7 +146,7 @@ def analyze():
 
     top = (
         results.group_by('backend').len().sort('len', descending=True)
-        .select('backend').head(4).to_series()
+        .select('backend').head(5).to_series()
     )
 
     results = results.with_columns(
@@ -166,7 +171,12 @@ def analyze():
 
     grouped = (
         results.sort('uploaded_on')
-        .group_by_dynamic('uploaded_on', group_by='backend', every='1mo')
+        .group_by_dynamic(
+            'uploaded_on',
+            group_by='backend',
+            every='1mo',
+            label='right',
+        )
         .agg(pl.len().alias('count'))
     )
     #print(grouped)
@@ -181,7 +191,12 @@ def analyze():
 
     #print(results)
 
-    sns.set_theme(palette='colorblind')
+    sns.set_theme(
+        palette='colorblind',
+        rc={
+            "axes.xmargin": 0,
+        },
+    )
 
     g = sns.relplot(
         normalized, x='uploaded_on', y='count', hue='backend',
