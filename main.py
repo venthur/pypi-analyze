@@ -146,7 +146,7 @@ def analyze():
 
     top = (
         results.group_by('backend').len().sort('len', descending=True)
-        .select('backend').head(5).to_series()
+        .select('backend').head(4).to_series()
     )
 
     results = results.with_columns(
@@ -233,7 +233,7 @@ def analyze():
     g.tight_layout()
     g.figure.savefig('absolute.png')
 
-    plt.show()
+    #plt.show()
 
 
 def main(arguments=None):
