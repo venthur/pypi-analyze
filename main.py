@@ -144,6 +144,11 @@ def analyze():
         .str.split(':').list.first()
     )
 
+    # rename 'DEFAULT' to 'setuptools'
+    results = results.with_columns(
+        pl.col('backend').replace('DEFAULT', 'setuptools')
+    )
+
     top = (
         results.group_by('backend').len().sort('len', descending=True)
         .select('backend').head(4).to_series()
@@ -155,13 +160,13 @@ def analyze():
         .otherwise(pl.lit('other'))
     )
 
-    counts = results['backend'].value_counts()
     n = len(results)
     #print(n)
-    #print(counts)
 
     results = results.filter(
         pl.col('uploaded_on') >= pl.date(2018, 1, 1),
+        #pl.col('uploaded_on') >= pl.date(2019, 1, 1),
+        #pl.col('uploaded_on') < pl.date(2025, 1, 1),
     )
 
     order = (
@@ -233,7 +238,7 @@ def analyze():
     g.tight_layout()
     g.figure.savefig('absolute.png')
 
-    #plt.show()
+    plt.show()
 
 
 def main(arguments=None):
