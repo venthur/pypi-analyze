@@ -8,8 +8,17 @@ import gzip
 import urllib3
 import duckdb
 import polars as pl
-import seaborn as sns
 from matplotlib import pyplot as plt
+import matplotlib as mpl
+
+plt.style.use('tableau-colorblind10')
+
+mpl.rcParams['figure.figsize'] = [12.0, 6.0]
+# mpl.rcParams['figure.dpi'] = 100
+mpl.rcParams['figure.constrained_layout.use'] = True
+mpl.rcParams['axes.grid'] = True
+mpl.rcParams['grid.alpha'] = 0.5
+mpl.rcParams['lines.linewidth'] = 2
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -174,69 +183,87 @@ def analyze():
         .select('backend').to_series()
     )
 
-    grouped = (
-        results.sort('uploaded_on')
-        .group_by_dynamic(
-            'uploaded_on',
-            group_by='backend',
-            every='1mo',
-            label='right',
-        )
-        .agg(pl.len().alias('count'))
+    results = results.with_columns(
+        pl.col('uploaded_on')
+        .dt.truncate('3mo')
     )
-    #print(grouped)
+    results = results.with_columns(
+        pl.col('uploaded_on').dt.year().cast(str) + '-Q' + pl.col('uploaded_on').dt.quarter().cast(str)
+    )
+
+    grouped = (
+        results.group_by(
+            ['uploaded_on', 'backend'],
+        )
+        .agg(pl.count('backend').alias('count'))
+        .sort('uploaded_on')
+    )
 
     normalized = (
         grouped.with_columns([
         (
-            pl.col('count') / pl.col('count').sum()
+            pl.col('count') / pl.col('count').sum() * 100
         ).over('uploaded_on')
     ]))
-    #print(normalized)
 
     #print(results)
 
-    sns.set_theme(
-        palette='colorblind',
-        rc={
-            "axes.xmargin": 0,
-        },
-    )
+    xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
+    xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
 
-    g = sns.relplot(
-        normalized, x='uploaded_on', y='count', hue='backend',
-        hue_order=order,
-        kind='line',
-        facet_kws={'legend_out': False},
-    )
-    g.figure.set_size_inches(12, 6)
-    g.set(title='Relative distribution of build backends over time.')
-    g.set(ylim=(0, 1))
-    g.set_axis_labels('Upload date', 'Uploads')
-    g.tight_layout()
-    g.figure.savefig('relative_single.png')
+    fig, ax = plt.subplots()
+    for backend in order:
+       ax.plot(normalized.filter(pl.col('backend') == backend)['uploaded_on'],
+               normalized.filter(pl.col('backend') == backend)['count'],
+               label=backend)
+    ax.set(title='Relative distribution of build backends by quarter.')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Percentage')
+    ax.set_xticks(xticks)
+    ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
+    ax.set_ylim(0)
+    ax.set_xlim(xmin, xmax)
+    ax.yaxis.tick_right()
+    ax.yaxis.set_label_position('right')
+    ax.spines['left'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.legend()
 
-    BIN_WIDTH = 7# * 4
+    plt.savefig('relative.png')
 
-    g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
-        binwidth=BIN_WIDTH,
-        multiple='fill', stat='percent', hue_order=order, facet_kws={'legend_out': False})
-    g.figure.set_size_inches(12, 6)
-    g.set(title=f'Relative distribution of build backends over time. (bin width={BIN_WIDTH} days, {n=:.1e} uploads)')
-    g.set_axis_labels('Upload date', 'Uploads')
-    g.tight_layout()
-    g.figure.savefig('relative.png')
 
-    g = sns.displot(results, x='uploaded_on', hue='backend', element='step',
-        col='backend', hue_order=order, col_order=order,
-        legend=False,
-        binwidth=BIN_WIDTH,
-    )
-    g.figure.set_size_inches(19, 6)
-    g.figure.suptitle(f'Absolute distribution of build backends over time. (bin width={BIN_WIDTH} days, {n=:.1e} uploads)')
-    g.set_axis_labels('Upload date', 'Uploads')
-    g.tight_layout()
-    g.figure.savefig('absolute.png')
+    fig, axes = plt.subplots(1, len(order), sharex=True, sharey=True)
+    for i, backend in enumerate(order):
+        color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
+        axes[i].plot(
+            grouped.filter(pl.col('backend') == backend)['uploaded_on'],
+            grouped.filter(pl.col('backend') == backend)['count'],
+            label=backend,
+            color=color,
+        )
+
+        axes[i].fill_between(
+            grouped.filter(pl.col('backend') == backend)['uploaded_on'],
+            0,
+            grouped.filter(pl.col('backend') == backend)['count'],
+            label=backend,
+            color=color,
+            alpha=0.7,
+        )
+        axes[i].set(title=backend)
+        axes[i].set_xticks(xticks)
+        axes[i].xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
+        axes[i].set_ylim(0)
+        axes[i].set_xlim((xmin, None))
+        axes[i].spines['right'].set_visible(False)
+        axes[i].spines['top'].set_visible(False)
+
+    fig.suptitle('Absolute distribution of build backends by quarter.')
+    fig.autofmt_xdate(rotation=90, ha='center')
+    fig.supxlabel('Date')
+    fig.supylabel('Uploads')
+
+    plt.savefig('absolute.png')
 
     plt.show()
 

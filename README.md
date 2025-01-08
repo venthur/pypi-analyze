@@ -9,11 +9,8 @@ more context.
 
 ## Results
 
-![Relative distribution of build backends over time](relative.png "Relative
-distribution of build backends over time")
+![Relative distribution of build backends quarter](relative.png "Relative
+distribution of build backends by quarter")
 
-![Relative distribution of build backends over time](relative_single.png
-"Relative distribution of build backends over time")
-
-![Absolute distribution of build backends over time](absolute.png "Absolute
-distribution of build backends over time")
+![Absolute distribution of build backends by quarter](absolute.png "Absolute
+distribution of build backends by quarter")
