@@ -183,6 +183,12 @@ def analyze():
         .select('backend').to_series()
     )
 
+    # move 'other' to the end
+    order = order.to_list()
+    if 'other' in order:
+        order.remove('other')
+        order.append('other')
+
     results = results.with_columns(
         pl.col('uploaded_on')
         .dt.truncate('3mo')
@@ -237,7 +243,7 @@ def analyze():
         color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
         axes[i].plot(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'],
-            grouped.filter(pl.col('backend') == backend)['count'],
+            grouped.filter(pl.col('backend') == backend)['count'] / 1000,
             label=backend,
             color=color,
         )
@@ -245,7 +251,7 @@ def analyze():
         axes[i].fill_between(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'],
             0,
-            grouped.filter(pl.col('backend') == backend)['count'],
+            grouped.filter(pl.col('backend') == backend)['count'] / 1000,
             label=backend,
             color=color,
             alpha=0.7,
@@ -261,7 +267,7 @@ def analyze():
     fig.suptitle('Absolute distribution of build backends by quarter.')
     fig.autofmt_xdate(rotation=90, ha='center')
     fig.supxlabel('Date')
-    fig.supylabel('Uploads')
+    fig.supylabel('Uploads (in thousands)')
 
     plt.savefig('absolute.png')
 
