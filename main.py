@@ -14,7 +14,6 @@ import matplotlib as mpl
 plt.style.use('tableau-colorblind10')
 
 mpl.rcParams['figure.figsize'] = [12.0, 6.0]
-# mpl.rcParams['figure.dpi'] = 100
 mpl.rcParams['figure.constrained_layout.use'] = True
 mpl.rcParams['axes.grid'] = True
 mpl.rcParams['grid.alpha'] = 0.5
@@ -129,6 +128,8 @@ def fetch_data():
 
 
 def analyze():
+    logger.info('Analyzing data')
+    logger.info('Loading results')
     results = get_results()
     backends = get_backends()
 
@@ -145,6 +146,7 @@ def analyze():
     results = results.join(backends, on='hash', how='inner')
     results = results.drop(['path', 'repository', 'hash'])
 
+    logger.info('Cleaning data')
     results = results.with_columns(
         pl.col('backend')
         .str.split('.').list.first()
@@ -168,9 +170,6 @@ def analyze():
         .then(pl.col('backend'))
         .otherwise(pl.lit('other'))
     )
-
-    n = len(results)
-    #print(n)
 
     results = results.filter(
         pl.col('uploaded_on') >= pl.date(2018, 1, 1),
@@ -214,6 +213,8 @@ def analyze():
 
     #print(results)
 
+    logger.info('Plotting data')
+
     xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
     xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
 
@@ -222,17 +223,15 @@ def analyze():
        ax.plot(normalized.filter(pl.col('backend') == backend)['uploaded_on'],
                normalized.filter(pl.col('backend') == backend)['count'],
                label=backend)
-    ax.set(title='Relative distribution of build backends by quarter.')
+    ax.set(title='Relative distribution of build backends by quarter')
     ax.set_xlabel('Date')
     ax.set_ylabel('Percentage')
     ax.set_xticks(xticks)
     ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
     ax.set_ylim(0)
-    ax.set_xlim(xmin, xmax)
+    ax.set_xlim((xmin, xmax))
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position('right')
-    ax.spines['left'].set_visible(False)
-    ax.spines['top'].set_visible(False)
     ax.legend()
 
     plt.savefig('relative.png')
@@ -260,11 +259,9 @@ def analyze():
         axes[i].set_xticks(xticks)
         axes[i].xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
         axes[i].set_ylim(0)
-        axes[i].set_xlim((xmin, None))
-        axes[i].spines['right'].set_visible(False)
-        axes[i].spines['top'].set_visible(False)
+        axes[i].set_xlim((xmin, xmax))
 
-    fig.suptitle('Absolute distribution of build backends by quarter.')
+    fig.suptitle('Absolute distribution of build backends by quarter')
     fig.autofmt_xdate(rotation=90, ha='center')
     fig.supxlabel('Date')
     fig.supylabel('Uploads (in thousands)')
