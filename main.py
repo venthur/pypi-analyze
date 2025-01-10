@@ -174,7 +174,7 @@ def analyze():
     results = results.filter(
         pl.col('uploaded_on') >= pl.date(2018, 1, 1),
         #pl.col('uploaded_on') >= pl.date(2019, 1, 1),
-        #pl.col('uploaded_on') < pl.date(2025, 1, 1),
+        pl.col('uploaded_on') < pl.date(2025, 1, 1),
     )
 
     order = (
@@ -222,6 +222,7 @@ def analyze():
     for backend in order:
        ax.plot(normalized.filter(pl.col('backend') == backend)['uploaded_on'],
                normalized.filter(pl.col('backend') == backend)['count'],
+               '.-',
                label=backend)
     ax.set(title='Relative distribution of build backends by quarter')
     ax.set_xlabel('Date')
@@ -243,6 +244,7 @@ def analyze():
         axes[i].plot(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'],
             grouped.filter(pl.col('backend') == backend)['count'] / 1000,
+            '.-',
             label=backend,
             color=color,
         )
