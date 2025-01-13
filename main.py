@@ -174,7 +174,7 @@ def analyze():
     results = results.filter(
         pl.col('uploaded_on') >= pl.date(2018, 1, 1),
         #pl.col('uploaded_on') >= pl.date(2019, 1, 1),
-        pl.col('uploaded_on') < pl.date(2025, 1, 1),
+        #pl.col('uploaded_on') < pl.date(2025, 1, 1),
     )
 
     order = (
