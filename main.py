@@ -83,6 +83,20 @@ def save_backends(backends):
         pickle.dump(backends, fh)
 
 
+def parse_backend(data):
+    try:
+        data = tomllib.loads(data)
+    except:
+        backend = 'PARSING_ERROR'
+    try:
+        backend = data['build-system']['build-backend']
+    except:
+        # fallback to setuptools as per:
+        # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#fallback-behaviour
+        backend = 'DEFAULT'
+    return backend
+
+
 def fetch_data():
     results = get_results()
     backends = get_backends()
@@ -190,10 +204,19 @@ def analyze():
 
     results = results.with_columns(
         pl.col('uploaded_on')
-        .dt.truncate('3mo')
+        # .dt.truncate('3mo')
+        # .dt.truncate('1mo')
+        .dt.truncate('1w')
     )
     results = results.with_columns(
-        pl.col('uploaded_on').dt.year().cast(str) + '-Q' + pl.col('uploaded_on').dt.quarter().cast(str)
+        # quarterly
+        # pl.col('uploaded_on').dt.year().cast(str) + '-Q' + pl.col('uploaded_on').dt.quarter().cast(str)
+
+        # montly
+        # pl.col('uploaded_on').dt.to_string('%Y-%m')
+
+        # weekly
+        pl.col('uploaded_on').dt.to_string('%Y-W%U')
     )
 
     grouped = (
@@ -215,8 +238,18 @@ def analyze():
 
     logger.info('Plotting data')
 
-    xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
-    xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
+    # quarterly
+    # xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
+    # xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
+
+    # monthly
+    # xmin, xmax = results['uploaded_on'].min(), None
+    # xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-12')]
+
+    # weekly
+    xmin, xmax = results['uploaded_on'].min(), None
+    xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-W52')]
+
 
     fig, ax = plt.subplots()
     for backend in order:
@@ -224,12 +257,13 @@ def analyze():
                normalized.filter(pl.col('backend') == backend)['count'],
                '.-',
                label=backend)
+
     ax.set(title='Relative distribution of build backends by quarter')
     ax.set_xlabel('Date')
     ax.set_ylabel('Percentage')
     ax.set_xticks(xticks)
     ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
-    ax.set_ylim(0)
+    ax.set_ylim(0, 100)
     ax.set_xlim((xmin, xmax))
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position('right')
