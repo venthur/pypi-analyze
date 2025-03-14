@@ -51,6 +51,10 @@ QUERY = """
 
 RESULTS = 'results.parquet'
 
+# for analysis:
+# 0: quarterly, 1: monthly, 2: weekly
+FREQUENCY = 2
+
 
 def get_results():
     if os.path.isfile(RESULTS):
@@ -208,16 +212,23 @@ def analyze():
         # .dt.truncate('1mo')
         .dt.truncate('1w')
     )
-    results = results.with_columns(
+    if FREQUENCY == 0:
         # quarterly
-        # pl.col('uploaded_on').dt.year().cast(str) + '-Q' + pl.col('uploaded_on').dt.quarter().cast(str)
-
-        # montly
-        # pl.col('uploaded_on').dt.to_string('%Y-%m')
-
+        results = results.with_columns(
+            pl.col('uploaded_on').dt.year().cast(str) + '-Q' + pl.col('uploaded_on').dt.quarter().cast(str)
+        )
+    elif FREQUENCY == 1:
+        # monthly
+        results = results.with_columns(
+            pl.col('uploaded_on').dt.to_string('%Y-%m')
+        )
+    elif FREQUENCY == 2:
         # weekly
-        pl.col('uploaded_on').dt.to_string('%Y-W%U')
-    )
+        results = results.with_columns(
+            pl.col('uploaded_on').dt.to_string('%Y-W%U')
+        )
+    else:
+        raise ValueError('FREQUENCY must be a value between 0..2')
 
     grouped = (
         results.group_by(
@@ -238,18 +249,20 @@ def analyze():
 
     logger.info('Plotting data')
 
-    # quarterly
-    # xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
-    # xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
-
-    # monthly
-    # xmin, xmax = results['uploaded_on'].min(), None
-    # xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-12')]
-
-    # weekly
-    xmin, xmax = results['uploaded_on'].min(), None
-    xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-W52')]
-
+    if FREQUENCY == 0:
+        # quarterly
+        xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
+        xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
+    elif FREQUENCY == 1:
+        # monthly
+        xmin, xmax = results['uploaded_on'].min(), None
+        xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-12')]
+    elif FREQUENCY == 2:
+        # weekly
+        xmin, xmax = results['uploaded_on'].min(), None
+        xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-W52')]
+    else:
+        raise ValueError('FREQUENCY must be a value between 0..2')
 
     fig, ax = plt.subplots()
     for backend in order:
