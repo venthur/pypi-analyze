@@ -132,8 +132,6 @@ def fetch_data():
         pl.col('hash').n_unique(),
     ).item(0, 0)
 
-    backends = {k: v for k, v in backends.items() if v is not None}
-
     results = results.filter(~pl.col('hash').is_in(backends.keys()))
 
     for i, row in enumerate(results.iter_rows()):
