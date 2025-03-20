@@ -137,16 +137,7 @@ def fetch_data():
         except:
             continue
 
-        try:
-            data = tomllib.loads(data)
-        except:
-            backend = 'PARSING_ERROR'
-        try:
-            backend = data['build-system']['build-backend']
-        except:
-            # fallback to setuptools as per:
-            # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#fallback-behaviour
-            backend = 'DEFAULT'
+        backend = parse_backend(data)
         backends[hash_] = backend
 
     save_backends(backends)
