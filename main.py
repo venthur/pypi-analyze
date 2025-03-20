@@ -90,6 +90,8 @@ def get_backends():
 
 
 def save_backends(backends):
+    for k, v in backends.items():
+        assert isinstance(k, str) and isinstance(v, str)
     with gzip.open('backends.pickle.gz', 'wb') as fh:
         pickle.dump(backends, fh)
 
@@ -105,6 +107,10 @@ def parse_backend(data):
         # fallback to setuptools as per:
         # https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/#fallback-behaviour
         backend = 'DEFAULT'
+    # sometimes the build backend is not a string (e.g. a list of string) which
+    # is not allowed as per PIP-517
+    if not isinstance(backend, str):
+        backend = 'INVALID_ERROR'
     return backend
 
 
