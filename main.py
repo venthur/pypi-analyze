@@ -56,10 +56,17 @@ RESULTS = 'results.parquet'
 FREQUENCY = 2
 
 
-def get_results():
-    if os.path.isfile(RESULTS):
+def get_results(cachefile):
+    """Get query results.
+
+    This method loads directly from the `cachefile` file if it exists.
+    Otherwise it queries the parquet files, stores the results in `cachefile`
+    and returns the results.
+
+    """
+    if os.path.isfile(cachefile):
         logger.info('Loading results from parquet file')
-        results = pl.read_parquet(RESULTS)
+        results = pl.read_parquet(cachefile)
     else:
         logger.info('Querying data from parquet files')
         results = duckdb.query(QUERY)
@@ -68,7 +75,7 @@ def get_results():
             pl.col('hash').bin.encode(encoding='hex'),
             pl.col('uploaded_on').dt.date()
         )
-        results.write_parquet(RESULTS)
+        results.write_parquet(cachefile)
     return results
 
 
@@ -102,7 +109,7 @@ def parse_backend(data):
 
 
 def fetch_data():
-    results = get_results()
+    results = get_results(RESULTS)
     backends = get_backends()
 
     unique_hashes = results.select(
@@ -148,7 +155,7 @@ def fetch_data():
 def analyze():
     logger.info('Analyzing data')
     logger.info('Loading results')
-    results = get_results()
+    results = get_results(RESULTS)
     backends = get_backends()
 
     unique_hashes = results.select(
