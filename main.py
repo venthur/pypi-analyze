@@ -118,6 +118,16 @@ def fetch_data():
     results = get_results(RESULTS)
     backends = get_backends()
 
+    # sometimes we have more hashes in `backends` than in `results`. i.e. when
+    # upstream lost or removed some. we need to remove the ones that don't
+    # exist upstream anymore
+    valid_hashes = set(results['hash'].to_list())
+    old_n = len(backends)
+    backends = {k: v for k, v in backends.items() if k in valid_hashes}
+    deleted = old_n - len(backends)
+    if deleted != 0:
+        logger.info(f'Deleted {deleted} items that have been removed upstream.')
+
     unique_hashes = results.select(
         pl.col('hash').n_unique(),
     ).item(0, 0)
