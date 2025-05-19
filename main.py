@@ -55,6 +55,8 @@ RESULTS = 'results.parquet'
 # 0: quarterly, 1: monthly, 2: weekly
 FREQUENCY = 2
 
+# top n backends to display, the others are merged into "other"
+TOP = 3
 
 def get_results(cachefile):
     """Get query results.
@@ -139,7 +141,7 @@ def fetch_data():
         url = f"https://raw.githubusercontent.com/pypi-data/pypi-mirror-{repository}/code/{path}"
 
         if i % 500 == 0:
-            logger.info(f"{len(backends)}/{unique_hashes} ({len(backends)/unique_hashes*100:.2f}%) [{uploaded_on}]")
+            logger.info(f"{len(backends)/unique_hashes*100:.2f}% done, {len(results)-i} tasks left. [{uploaded_on}]")
             save_backends(backends)
 
         if hash_ in backends:
@@ -154,6 +156,8 @@ def fetch_data():
         backend = parse_backend(data)
         backends[hash_] = backend
 
+    logger.info(f"Finished with {len(backends)/unique_hashes*100:.2f}% done, {unique_hashes - len(backends)} items left. [{uploaded_on}]")
+
     save_backends(backends)
 
 
@@ -162,11 +166,6 @@ def analyze():
     logger.info('Loading results')
     results = get_results(RESULTS)
     backends = get_backends()
-
-    unique_hashes = results.select(
-        pl.col('hash').n_unique(),
-    ).item(0, 0)
-    logger.info(f"{len(backends)}/{unique_hashes} ({len(backends)/unique_hashes*100:.2f}%)")
 
     backends = pl.DataFrame({
         'hash': backends.keys(),
@@ -192,7 +191,7 @@ def analyze():
 
     top = (
         results.group_by('backend').len().sort('len', descending=True)
-        .select('backend').head(4).to_series()
+        .select('backend').head(TOP).to_series()
     )
 
     results = results.with_columns(
@@ -280,7 +279,8 @@ def analyze():
     for backend in order:
        ax.plot(normalized.filter(pl.col('backend') == backend)['uploaded_on'],
                normalized.filter(pl.col('backend') == backend)['count'],
-               '.-',
+               '-',
+               # '.-',
                label=backend)
 
     ax.set(title='Relative distribution of build backends by quarter')
@@ -303,7 +303,8 @@ def analyze():
         axes[i].plot(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'],
             grouped.filter(pl.col('backend') == backend)['count'] / 1000,
-            '.-',
+            '-',
+            # '.-',
             label=backend,
             color=color,
         )

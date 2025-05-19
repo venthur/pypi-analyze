@@ -1,6 +1,7 @@
-duckdb==1.2.1
-ipython==9.0.2
+duckdb==1.2.2
+ipython==9.1.0
 matplotlib==3.10.1
-numpy==2.2.3
-polars[pyarrow]==1.24.0
-urllib3==2.3.0
+numpy==2.2.4
+polars[pyarrow]==1.27.1
+urllib3==2.4.0
+pur==7.3.3
