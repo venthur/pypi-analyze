@@ -51,12 +51,8 @@ QUERY = """
 
 RESULTS = 'results.parquet'
 
-# for analysis:
-# 0: quarterly, 1: monthly, 2: weekly
-FREQUENCY = 2
-
 # top n backends to display, the others are merged into "other"
-TOP = 3
+TOP = 4
 
 def get_results(cachefile):
     """Get query results.
@@ -217,77 +213,73 @@ def analyze():
         order.remove('other')
         order.append('other')
 
-    results = results.with_columns(
+    # quarterly
+    results_quarterly = results.with_columns(
         pl.col('uploaded_on')
-        # .dt.truncate('3mo')
-        # .dt.truncate('1mo')
+        .dt.truncate('3mo')
+    )
+    # weekly
+    results_weekly = results.with_columns(
+        pl.col('uploaded_on')
         .dt.truncate('1w')
     )
-    if FREQUENCY == 0:
-        # quarterly
-        results = results.with_columns(
-            pl.col('uploaded_on').dt.year().cast(str) + '-Q' + pl.col('uploaded_on').dt.quarter().cast(str)
-        )
-    elif FREQUENCY == 1:
-        # monthly
-        results = results.with_columns(
-            pl.col('uploaded_on').dt.to_string('%Y-%m')
-        )
-    elif FREQUENCY == 2:
-        # weekly
-        results = results.with_columns(
-            pl.col('uploaded_on').dt.to_string('%Y-W%U')
-        )
-    else:
-        raise ValueError('FREQUENCY must be a value between 0..2')
 
-    grouped = (
-        results.group_by(
+    grouped_quarterly = (
+        results_quarterly.group_by(
+            ['uploaded_on', 'backend'],
+        )
+        .agg(pl.count('backend').alias('count'))
+        .sort('uploaded_on')
+    )
+    grouped_weekly = (
+        results_weekly.group_by(
             ['uploaded_on', 'backend'],
         )
         .agg(pl.count('backend').alias('count'))
         .sort('uploaded_on')
     )
 
-    normalized = (
-        grouped.with_columns([
+    normalized_quarterly = (
+        grouped_quarterly.with_columns([
+        (
+            pl.col('count') / pl.col('count').sum() * 100
+        ).over('uploaded_on')
+    ]))
+    normalized_weekly = (
+        grouped_weekly.with_columns([
         (
             pl.col('count') / pl.col('count').sum() * 100
         ).over('uploaded_on')
     ]))
 
+
     #print(results)
 
     logger.info('Plotting data')
 
-    if FREQUENCY == 0:
-        # quarterly
-        xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
-        xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('Q4')]
-    elif FREQUENCY == 1:
-        # monthly
-        xmin, xmax = results['uploaded_on'].min(), None
-        xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-12')]
-    elif FREQUENCY == 2:
-        # weekly
-        xmin, xmax = results['uploaded_on'].min(), None
-        xticks = [s for s in results['uploaded_on'].sort().unique().to_list() if s.endswith('-W52')]
-    else:
-        raise ValueError('FREQUENCY must be a value between 0..2')
+    xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
 
     fig, ax = plt.subplots()
     for backend in order:
-       ax.plot(normalized.filter(pl.col('backend') == backend)['uploaded_on'],
-               normalized.filter(pl.col('backend') == backend)['count'],
+       p = ax.plot(normalized_quarterly.filter(pl.col('backend') == backend)['uploaded_on'],
+               normalized_quarterly.filter(pl.col('backend') == backend)['count'],
                '-',
                # '.-',
                label=backend)
+       ax.plot(normalized_weekly.filter(pl.col('backend') == backend)['uploaded_on'],
+               normalized_weekly.filter(pl.col('backend') == backend)['count'],
+               '.',
+               # '.-',
+               color=p[-1].get_color(),
+               alpha=0.3,
+        )
 
     ax.set(title='Relative distribution of build backends by quarter')
     ax.set_xlabel('Date')
     ax.set_ylabel('Percentage')
-    ax.set_xticks(xticks)
-    ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
+    ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
+    ax.xaxis.set_major_locator(mpl.dates.YearLocator())
+    ax.xaxis.set_major_formatter(mpl.dates.DateFormatter("%Y"))
     ax.set_ylim(0, 100)
     ax.set_xlim((xmin, xmax))
     ax.yaxis.tick_right()
@@ -296,6 +288,7 @@ def analyze():
 
     plt.savefig('relative.png')
 
+    grouped = grouped_quarterly
 
     fig, axes = plt.subplots(1, len(order), sharex=True, sharey=True)
     for i, backend in enumerate(order):
@@ -318,8 +311,10 @@ def analyze():
             alpha=0.7,
         )
         axes[i].set(title=backend)
-        axes[i].set_xticks(xticks)
-        axes[i].xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator('auto'))
+        axes[i].xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
+        axes[i].xaxis.set_major_locator(mpl.dates.YearLocator())
+        axes[i].xaxis.set_major_formatter(mpl.dates.DateFormatter("%Y"))
+ 
         axes[i].set_ylim(0)
         axes[i].set_xlim((xmin, xmax))
 
