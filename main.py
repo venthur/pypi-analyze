@@ -188,7 +188,7 @@ def analyze():
     top = (
         results.group_by('backend').len().sort('len', descending=True)
         .select('backend').head(TOP).to_series()
-    )
+    ).to_list()
 
     results = results.with_columns(
         pl.when(pl.col('backend').is_in(top))
@@ -197,7 +197,7 @@ def analyze():
     )
 
     results = results.filter(
-        pl.col('uploaded_on') >= pl.date(2018, 1, 1),
+        pl.col('uploaded_on') >= pl.date(2018, 1, 1).dt.offset_by('-3mo'),
         #pl.col('uploaded_on') >= pl.date(2019, 1, 1),
         #pl.col('uploaded_on') < pl.date(2025, 1, 1),
     )
@@ -217,11 +217,13 @@ def analyze():
     results_quarterly = results.with_columns(
         pl.col('uploaded_on')
         .dt.truncate('3mo')
+        .dt.offset_by('3mo')
     )
     # weekly
     results_weekly = results.with_columns(
         pl.col('uploaded_on')
         .dt.truncate('1w')
+        .dt.offset_by('1w')
     )
 
     grouped_quarterly = (
@@ -257,12 +259,12 @@ def analyze():
 
     logger.info('Plotting data')
 
-    xmin, xmax = results['uploaded_on'].min(), results['uploaded_on'].max()
+    xmin, xmax = normalized_quarterly['uploaded_on'].min(), normalized_quarterly['uploaded_on'].max()
 
     fig, ax = plt.subplots()
     for backend in order:
-       p = ax.plot(normalized_quarterly.filter(pl.col('backend') == backend)['uploaded_on'],
-               normalized_quarterly.filter(pl.col('backend') == backend)['count'],
+       p = ax.plot(normalized_quarterly.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
+               normalized_quarterly.filter(pl.col('backend') == backend)['count'][:-1],
                '-',
                # '.-',
                label=backend)
@@ -274,7 +276,7 @@ def analyze():
                alpha=0.3,
         )
 
-    ax.set(title='Relative distribution of build backends by quarter')
+    ax.set(title='Relative distribution of build backends')
     ax.set_xlabel('Date')
     ax.set_ylabel('Percentage')
     ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
@@ -294,22 +296,39 @@ def analyze():
     for i, backend in enumerate(order):
         color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
         axes[i].plot(
-            grouped.filter(pl.col('backend') == backend)['uploaded_on'],
-            grouped.filter(pl.col('backend') == backend)['count'] / 1000,
+            grouped.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
+            grouped.filter(pl.col('backend') == backend)['count'][:-1] / 1000,
             '-',
             # '.-',
             label=backend,
             color=color,
         )
+        axes[i].plot(
+            grouped.filter(pl.col('backend') == backend)['uploaded_on'][-1],
+            grouped.filter(pl.col('backend') == backend)['count'][-1] / 1000,
+            '.',
+            # '.-',
+            label=backend,
+            color=color,
+        )
+
 
         axes[i].fill_between(
-            grouped.filter(pl.col('backend') == backend)['uploaded_on'],
+            grouped.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
             0,
-            grouped.filter(pl.col('backend') == backend)['count'] / 1000,
+            grouped.filter(pl.col('backend') == backend)['count'][:-1] / 1000,
             label=backend,
             color=color,
             alpha=0.7,
         )
+        # axes[i].fill_between(
+        #     grouped.filter(pl.col('backend') == backend)['uploaded_on'][-2:],
+        #     0,
+        #     grouped.filter(pl.col('backend') == backend)['count'][-2:] / 1000,
+        #     label=backend,
+        #     color=color,
+        #     alpha=0.3,
+        # )
         axes[i].set(title=backend)
         axes[i].xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
         axes[i].xaxis.set_major_locator(mpl.dates.YearLocator())
