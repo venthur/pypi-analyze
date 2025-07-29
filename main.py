@@ -4,6 +4,7 @@ import pickle
 import os.path
 import logging
 import gzip
+import sys
 
 import urllib3
 import duckdb
@@ -377,7 +378,8 @@ def main(arguments=None):
         analyze()
     if args.trim_dataset:
         dataset = args.trim_dataset[0]
-        trim_dataset(dataset, 'data/')
+        if trim_dataset(dataset, 'data/'):
+            sys.exit(1)
 
 
 def trim_dataset(dsfile, dsdir):
@@ -397,6 +399,10 @@ def trim_dataset(dsfile, dsdir):
         print(f"Deleting {file}")
         # delete the file
         os.remove(os.path.join(dsdir, file))
+
+    if dsfiles != dsdirfiles:
+        return True
+    return False
 
 
 if __name__ == '__main__':
