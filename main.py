@@ -11,6 +11,8 @@ import duckdb
 import polars as pl
 from matplotlib import pyplot as plt
 import matplotlib as mpl
+from rich.progress import track
+from rich.logging import RichHandler
 
 plt.style.use('tableau-colorblind10')
 
@@ -23,7 +25,10 @@ mpl.rcParams['lines.linewidth'] = 2
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+#    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler()],
 )
 
 # │ project_name    │ VARCHAR     │ YES     │
@@ -133,7 +138,7 @@ def fetch_data():
 
     results = results.filter(~pl.col('hash').is_in(backends.keys()))
 
-    for i, row in enumerate(results.iter_rows()):
+    for i, row in enumerate(track(results.iter_rows(), total=len(results))):
         path, hash_, uploaded_on, repository = row
         url = f"https://raw.githubusercontent.com/pypi-data/pypi-mirror-{repository}/code/{path}"
 
