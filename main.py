@@ -303,7 +303,7 @@ def analyze():
         color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
         axes[i].plot(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
-            grouped.filter(pl.col('backend') == backend)['count'][:-1] / 1000,
+            grouped.filter(pl.col('backend') == backend)['count'][:-1],
             '-',
             # '.-',
             label=backend,
@@ -311,7 +311,7 @@ def analyze():
         )
         axes[i].plot(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'][-1],
-            grouped.filter(pl.col('backend') == backend)['count'][-1] / 1000,
+            grouped.filter(pl.col('backend') == backend)['count'][-1],
             '.',
             # '.-',
             label=backend,
@@ -322,7 +322,7 @@ def analyze():
         axes[i].fill_between(
             grouped.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
             0,
-            grouped.filter(pl.col('backend') == backend)['count'][:-1] / 1000,
+            grouped.filter(pl.col('backend') == backend)['count'][:-1],
             label=backend,
             color=color,
             alpha=0.7,
@@ -330,7 +330,7 @@ def analyze():
         # axes[i].fill_between(
         #     grouped.filter(pl.col('backend') == backend)['uploaded_on'][-2:],
         #     0,
-        #     grouped.filter(pl.col('backend') == backend)['count'][-2:] / 1000,
+        #     grouped.filter(pl.col('backend') == backend)['count'][-2:],
         #     label=backend,
         #     color=color,
         #     alpha=0.3,
@@ -339,6 +339,8 @@ def analyze():
         axes[i].xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
         axes[i].xaxis.set_major_locator(mpl.dates.YearLocator())
         axes[i].xaxis.set_major_formatter(mpl.dates.DateFormatter("%Y"))
+
+        axes[i].yaxis.set_major_formatter(mpl.ticker.EngFormatter())
  
         axes[i].set_ylim(0)
         axes[i].set_xlim((xmin, xmax))
@@ -346,7 +348,7 @@ def analyze():
     fig.suptitle('Absolute distribution of build backends by quarter')
     fig.autofmt_xdate(rotation=90, ha='center')
     fig.supxlabel('Date')
-    fig.supylabel('Uploads (in thousands)')
+    fig.supylabel('Uploads (#)')
 
     plt.savefig('absolute.png')
 
