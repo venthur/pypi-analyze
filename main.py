@@ -163,6 +163,17 @@ def fetch_data():
     save_backends(backends)
 
 
+def quarter_formatter(x, pos=None):
+    date = mpl.dates.num2date(x)
+    month = date.month
+    return {
+        4: 'Q1',
+        7: 'Q2',
+        10: 'Q3',
+        1: 'Q4',
+    }[month]
+
+
 def analyze():
     logger.info('Analyzing data')
     logger.info('Loading results')
@@ -267,7 +278,10 @@ def analyze():
 
     xmin, xmax = normalized_quarterly['uploaded_on'].min(), normalized_quarterly['uploaded_on'].max()
 
-    fig, ax = plt.subplots()
+    fig = plt.figure()
+
+    ax, ax2 = fig.subplots(nrows=2, sharex=True, height_ratios=[5,1],
+                           gridspec_kw={'hspace': 0})
     for backend in order:
        p = ax.plot(normalized_quarterly.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
                normalized_quarterly.filter(pl.col('backend') == backend)['count'][:-1],
@@ -282,18 +296,46 @@ def analyze():
                alpha=0.3,
         )
 
-    ax.set(title='Relative distribution of build backends')
-    ax.set_xlabel('Date')
+    ax.set_title('Relative distribution of build backends', y=1.0, pad=-15,
+                 backgroundcolor='white')
+    #ax.set_xlabel('Date')
     ax.set_ylabel('Percentage')
     ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
-    ax.xaxis.set_major_locator(mpl.dates.YearLocator())
-    ax.xaxis.set_major_formatter(mpl.dates.DateFormatter("%Y"))
+    ax.xaxis.set_minor_formatter(mpl.ticker.FuncFormatter(quarter_formatter))
+    ax.xaxis.set_major_locator(mpl.dates.YearLocator(month=2, day=14))
+    ax.xaxis.set_major_formatter(mpl.dates.DateFormatter("\n%Y"))
+
     ax.set_ylim(0, 100)
     ax.set_xlim((xmin, xmax))
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position('right')
     ax.legend()
 
+    uploads_quarterly = results_quarterly['uploaded_on'].value_counts().sort('uploaded_on')
+    #ax2 = ax.twinx()
+    ax2.bar(
+        uploads_quarterly['uploaded_on'][:-1],
+        uploads_quarterly['count'][:-1],
+        width=30,
+        color='k',
+    )
+    ax2.bar(
+        uploads_quarterly['uploaded_on'][-1],
+        uploads_quarterly['count'][-1],
+        width=30,
+        color='k',
+        alpha=0.5,
+    )
+    ax2.set_title('Absolute number of uploads by quarter', y=1.0, pad=-15,
+                  backgroundcolor='white')
+    ax2.set_ylim((0, None))
+    ax2.set_xlabel('Date')
+    ax2.set_ylabel('Uploads (#)')
+    ax2.yaxis.tick_right()
+    ax2.yaxis.set_label_position('right')
+    ax2.yaxis.set_major_formatter(mpl.ticker.EngFormatter())
+
+    plt.tight_layout()
     plt.savefig('relative.png')
 
     grouped = grouped_quarterly
