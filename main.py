@@ -214,8 +214,8 @@ def analyze():
     )
 
     results = results.filter(
-        pl.col('uploaded_on') >= pl.date(2018, 1, 1).dt.offset_by('-3mo'),
-        #pl.col('uploaded_on') >= pl.date(2019, 1, 1),
+        #pl.col('uploaded_on') >= pl.date(2018, 1, 1).dt.offset_by('-3mo'),
+        pl.col('uploaded_on') >= pl.date(2018, 1, 1),
         #pl.col('uploaded_on') < pl.date(2025, 1, 1),
     )
 
@@ -300,7 +300,7 @@ def analyze():
                  backgroundcolor='white')
     #ax.set_xlabel('Date')
     ax.set_ylabel('Percentage')
-    ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
+    ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(interval=3))
     ax.xaxis.set_minor_formatter(mpl.ticker.FuncFormatter(quarter_formatter))
     ax.xaxis.set_major_locator(mpl.dates.YearLocator(month=2, day=14))
     ax.xaxis.set_major_formatter(mpl.dates.DateFormatter("\n%Y"))
@@ -312,7 +312,6 @@ def analyze():
     ax.legend()
 
     uploads_quarterly = results_quarterly['uploaded_on'].value_counts().sort('uploaded_on')
-    #ax2 = ax.twinx()
     ax2.bar(
         uploads_quarterly['uploaded_on'][:-1],
         uploads_quarterly['count'][:-1],
@@ -326,7 +325,7 @@ def analyze():
         color='k',
         alpha=0.5,
     )
-    ax2.set_title('Absolute number of uploads by quarter', y=1.0, pad=-15,
+    ax2.set_title('Absolute number of uploads', y=1.0, pad=-15,
                   backgroundcolor='white')
     ax2.set_ylim((0, None))
     ax2.set_xlabel('Date')
