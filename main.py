@@ -299,7 +299,7 @@ def analyze():
     ax.set_title('Relative distribution of build backends', y=1.0, pad=-15,
                  backgroundcolor='white')
     #ax.set_xlabel('Date')
-    ax.set_ylabel('Percentage')
+    ax.set_ylabel('Distribution (%)')
     ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(interval=3))
     ax.xaxis.set_minor_formatter(mpl.ticker.FuncFormatter(quarter_formatter))
     ax.xaxis.set_major_locator(mpl.dates.YearLocator(month=2, day=14))
@@ -325,7 +325,7 @@ def analyze():
         color='k',
         alpha=0.5,
     )
-    ax2.set_title('Absolute number of uploads', y=1.0, pad=-15,
+    ax2.set_title('Quarterly uploads', y=1.0, pad=-15,
                   backgroundcolor='white')
     ax2.set_ylim((0, None))
     ax2.set_xlabel('Date')
