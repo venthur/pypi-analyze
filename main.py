@@ -333,6 +333,7 @@ def analyze():
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position('right')
     ax.legend()
+    ax.xaxis.set_ticks_position('none')
 
     uploads_quarterly = results_quarterly['uploaded_on'].value_counts().sort('uploaded_on')
     ax2.bar(
@@ -357,7 +358,7 @@ def analyze():
     ax2.yaxis.set_label_position('right')
     ax2.yaxis.set_major_formatter(mpl.ticker.EngFormatter())
 
-    plt.tight_layout()
+    fig.set_layout_engine('tight')
     plt.savefig('relative.png')
 
     grouped = grouped_quarterly
