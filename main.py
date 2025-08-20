@@ -5,6 +5,7 @@ import os.path
 import logging
 import gzip
 import sys
+from datetime import datetime
 
 import urllib3
 import duckdb
@@ -294,6 +295,27 @@ def analyze():
                # '.-',
                color=p[-1].get_color(),
                alpha=0.3,
+        )
+
+    EVENTS = (
+        ("2024-08-20", "uv 0.3.0: hatchling"),
+        ("2025-07-18", "uv 0.8.0: uv_build"),
+    )
+
+    for date, text in EVENTS:
+        ax.vlines(
+            datetime.strptime(date, "%Y-%m-%d"),
+            0, 100,
+            colors='grey',
+            linewidth=1,
+            zorder=-1,
+        )
+        ax.annotate(
+            text,
+            xy=(datetime.strptime(date, "%Y-%m-%d"), 0),
+            xytext=(-1.1, 1.1),
+            textcoords="offset fontsize",
+            rotation=90,
         )
 
     ax.set_title('Relative distribution of build backends', y=1.0, pad=-15,
