@@ -60,6 +60,7 @@ RESULTS = 'results.parquet'
 
 # top n backends to display, the others are merged into "other"
 TOP = 4
+TOP = 8
 
 def get_results(cachefile):
     """Get query results.
@@ -207,6 +208,8 @@ def analyze():
         results.group_by('backend').len().sort('len', descending=True)
         .select('backend').head(TOP).to_series()
     ).to_list()
+    # if 'uv' not in top:
+    #     top.append('uv')
 
     results = results.with_columns(
         pl.when(pl.col('backend').is_in(top))
@@ -332,8 +335,8 @@ def analyze():
     ax.set_xlim((xmin, xmax))
     ax.yaxis.tick_right()
     ax.yaxis.set_label_position('right')
-    ax.legend()
     ax.xaxis.set_ticks_position('none')
+    ax.legend(loc='upper left')
 
     uploads_quarterly = results_quarterly['uploaded_on'].value_counts().sort('uploaded_on')
     ax2.bar(
