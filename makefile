@@ -15,13 +15,9 @@ run: $(VENV)
 
 get-dataset: $(VENV)
 	curl --silent -o $(DATASET_FILE) https://raw.githubusercontent.com/pypi-data/data/main/links/dataset.txt
-	@if $(BIN)/python3 main.py --trim-dataset $(DATASET_FILE); then \
-		echo "No changes in data set."; \
-	else \
-		echo "Updating data set"; \
-		curl -L -C - --remote-name-all --parallel --create-dirs --output-dir $(DATASET_DIR) $$(cat $(DATASET_FILE)); \
-		rm -f results.parquet; \
-	fi
+	$(BIN)/python3 main.py --trim-dataset $(DATASET_FILE)
+	curl -L -C - --remote-name-all --parallel --create-dirs --output-dir $(DATASET_DIR) $$(cat $(DATASET_FILE))
+	rm -f results.parquet
 
 get-data: $(VENV)
 	$(BIN)/python3 main.py --fetch-data

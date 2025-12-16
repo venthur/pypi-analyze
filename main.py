@@ -1,19 +1,19 @@
 import argparse
-import tomllib
-import pickle
-import os.path
-import logging
 import gzip
+import logging
+import os.path
+import pickle
 import sys
 from datetime import datetime
 
-import urllib3
 import duckdb
-import polars as pl
-from matplotlib import pyplot as plt
 import matplotlib as mpl
-from rich.progress import track
+import polars as pl
+import tomllib
+import urllib3
+from matplotlib import pyplot as plt
 from rich.logging import RichHandler
+from rich.progress import track
 
 plt.style.use('tableau-colorblind10')
 
@@ -60,7 +60,6 @@ RESULTS = 'results.parquet'
 
 # top n backends to display, the others are merged into "other"
 TOP = 4
-TOP = 8
 
 def get_results(cachefile):
     """Get query results.
@@ -204,12 +203,30 @@ def analyze():
         pl.col('backend').replace('DEFAULT', 'setuptools')
     )
 
+    # absolute
     top = (
         results.group_by('backend').len().sort('len', descending=True)
         .select('backend').head(TOP).to_series()
     ).to_list()
-    # if 'uv' not in top:
-    #     top.append('uv')
+
+    # last n days
+    cutoff = results['uploaded_on'].max() - pl.duration(days=90)
+    top_3mo = (
+        results
+        .filter(pl.col('uploaded_on') >= cutoff)
+        .group_by('backend').len().sort('len', descending=True)
+        .select('backend')
+        .head(TOP)
+        .to_series()
+    ).to_list()
+
+    top = list(set(top) | set(top_3mo))
+
+    # print TOP in absolute values
+    print('Top backends in absolute numbers',
+        results.group_by('backend').len().sort('len', descending=True)
+        .head(10)
+     )
 
     results = results.with_columns(
         pl.when(pl.col('backend').is_in(top))
@@ -274,7 +291,12 @@ def analyze():
             pl.col('count') / pl.col('count').sum() * 100
         ).over('uploaded_on')
     ]))
-
+    print('Top relative of last quarter',
+        normalized_quarterly[-len(top)-1:].sort('count', descending=True)
+    )
+    print('Top relative of last week',
+        normalized_weekly[-len(top)-1:].sort('count', descending=True)
+    )
 
     #print(results)
 
@@ -475,9 +497,10 @@ def trim_dataset(dsfile, dsdir):
         # delete the file
         os.remove(os.path.join(dsdir, file))
 
-    if dsfiles != dsdirfiles:
-        return True
-    return False
+
+    # if dsfiles != dsdirfiles:
+    #     return True
+    # return False
 
 
 if __name__ == '__main__':
