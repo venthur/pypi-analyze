@@ -167,13 +167,16 @@ def fetch_data():
 def quarter_formatter(x, pos=None):
     date = mpl.dates.num2date(x)
     month = date.month
-    return {
-        4: 'Q1',
-        7: 'Q2',
-        10: 'Q3',
-        1: 'Q4',
-    }[month]
-
+    if month in (1, 2, 3):
+        return 'Q1'
+    elif month in (4, 5, 6):
+        return 'Q2'
+    elif month in (7, 8, 9):
+        return 'Q3'
+    elif month in (10, 11, 12):
+        return 'Q4'
+    else:
+        return ''
 
 def analyze():
     logger.info('Analyzing data')
@@ -255,13 +258,13 @@ def analyze():
     results_quarterly = results.with_columns(
         pl.col('uploaded_on')
         .dt.truncate('3mo')
-        .dt.offset_by('3mo')
+        .dt.offset_by('1mo2w')
     )
     # weekly
     results_weekly = results.with_columns(
         pl.col('uploaded_on')
         .dt.truncate('1w')
-        .dt.offset_by('1w')
+        .dt.offset_by('3d')
     )
 
     grouped_quarterly = (
@@ -309,7 +312,8 @@ def analyze():
     ax, ax2 = fig.subplots(nrows=2, sharex=True, height_ratios=[5,1],
                            gridspec_kw={'hspace': 0})
     for backend in order:
-       p = ax.plot(normalized_quarterly.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
+       p = ax.plot(
+               normalized_quarterly.filter(pl.col('backend') == backend)['uploaded_on'][:-1],
                normalized_quarterly.filter(pl.col('backend') == backend)['count'][:-1],
                '-',
                # '.-',
@@ -348,9 +352,9 @@ def analyze():
     #ax.set_xlabel('Date')
     ax.yaxis.set_major_locator(mpl.ticker.MaxNLocator())
     ax.set_ylabel('Distribution (%)')
-    ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[4, 7, 10, 1]))
+    ax.xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[2, 5, 8, 11], bymonthday=15))
     ax.xaxis.set_minor_formatter(mpl.ticker.FuncFormatter(quarter_formatter))
-    ax.xaxis.set_major_locator(mpl.dates.YearLocator(month=2, day=14))
+    ax.xaxis.set_major_locator(mpl.dates.YearLocator())
     ax.xaxis.set_major_formatter(mpl.dates.DateFormatter("\n%Y"))
 
     ax.set_ylim(0, 100)
